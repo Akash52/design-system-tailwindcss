@@ -393,3 +393,101 @@ Benefits:
 ---
 
 By following these practices and applying them to your specific context, you can confidently build a robust design system that upholds your brand and ensures seamless design and development processes. Remember, the key is to start small, involve your team, and continuously iterate based on real-world usage and feedback. 🌟
+
+
+
+
+
+
+describe('getEdtcCellStyle', () => {
+  let mockCurrentTime;
+  const flightLegKeyMock = {
+    atcEdctTimeZulu: '2023-10-30T12:00:00Z',
+  };
+
+  const paramsMock = {
+    data: {
+      departureFlightLegStatus: [],
+      departureFlightLeg: {
+        atcProgramType: [],
+      },
+      bestDepartureTime: moment.utc('2023-10-30T12:30:00Z').valueOf(),
+    },
+  };
+
+  beforeEach(() => {
+    // Reset mocks before each test
+    paramsMock.data.departureFlightLegStatus = [];
+    paramsMock.data.departureFlightLeg.atcProgramType = [];
+  });
+
+  it('should return null if flightLegKey is not provided', () => {
+    const result = getEdtcCellStyle(paramsMock, null, 15);
+    expect(result).toBeNull();
+  });
+
+  it('should return empty object for canceled flight status', () => {
+    paramsMock.data.departureFlightLegStatus = ['Canceled'];
+    const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 15);
+    expect(result).toEqual({});
+  });
+
+  it('should return empty object for offline flight status', () => {
+    paramsMock.data.departureFlightLegStatus = ['Offline'];
+    const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 15);
+    expect(result).toEqual({});
+  });
+
+  it('should set color to purple if program type contains GS', () => {
+    paramsMock.data.departureFlightLeg.atcProgramType = ['GS'];
+    const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 15);
+    expect(result.color).toEqual(Color.purple);
+  });
+
+  it('should set background color to cyan if EDCT is less than best departure minus threshold', () => {
+    const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 30);
+    expect(result.backgroundColor).toEqual(Color.cyan);
+  });
+
+  describe('time-based background colors', () => {
+    beforeEach(() => {
+      jasmine.clock().install();
+    });
+
+    afterEach(() => {
+      jasmine.clock().uninstall();
+    });
+
+    it('should set background color to red if current time is more than 10 minutes after EDCT', () => {
+      const currentTime = moment.utc('2023-10-30T12:11:00Z');
+      spyOn(moment, 'utc').and.returnValue(currentTime);
+      
+      const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 15);
+      expect(result.backgroundColor).toEqual(Color.red);
+    });
+
+    it('should set background color to orange if current time is within 10 minutes before EDCT', () => {
+      const currentTime = moment.utc('2023-10-30T11:55:00Z');
+      spyOn(moment, 'utc').and.returnValue(currentTime);
+      
+      const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 15);
+      expect(result.backgroundColor).toEqual(Color.orange);
+    });
+
+    it('should set background color to yellow if current time is within 25 minutes before EDCT', () => {
+      const currentTime = moment.utc('2023-10-30T11:40:00Z');
+      spyOn(moment, 'utc').and.returnValue(currentTime);
+      
+      const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 15);
+      expect(result.backgroundColor).toEqual(Color.yellow);
+    });
+
+    it('should return empty object if current time is more than 25 minutes before EDCT', () => {
+      const currentTime = moment.utc('2023-10-30T11:30:00Z');
+      spyOn(moment, 'utc').and.returnValue(currentTime);
+      
+      const result = getEdtcCellStyle(paramsMock, flightLegKeyMock, 15);
+      expect(result).toEqual({});
+    });
+  });
+});
