@@ -393,3 +393,77 @@ Benefits:
 ---
 
 By following these practices and applying them to your specific context, you can confidently build a robust design system that upholds your brand and ensures seamless design and development processes. Remember, the key is to start small, involve your team, and continuously iterate based on real-world usage and feedback. 🌟
+
+
+
+
+describe('getEdtcCellStyle', () => {
+
+  it('should return null if no flightLegKey', () => {
+    const result = getEdtcCellStyle({}, null, 30);
+    expect(result).toBeNull();
+  });
+
+  it('should return empty object if flight is canceled or offline', () => {
+    const params = { data: { departureFlightLegStatus: 'Canceled' } };
+    const result = getEdtcCellStyle(params, {}, 30);
+    expect(result).toEqual({});
+
+    params.data.departureFlightLegStatus = 'Offline';
+    const resultOffline = getEdtcCellStyle(params, {}, 30);
+    expect(resultOffline).toEqual({});
+  });
+
+  it('should return purple color for GS program type', () => {
+    const params = { data: { departureFlightLeg: { atcProgramType: 'GS' } } };
+    const flightLegKey = { atcEdctTimeZulu: '2023-10-30T12:00:00Z' };
+    const result = getEdtcCellStyle(params, flightLegKey, 30);
+    expect(result).toEqual({ color: Color.purple });
+  });
+
+  it('should return cyan background if edctTime is before bestDeparture - threshold', () => {
+    mockMoment('2023-10-30T11:00:00Z');
+    const params = { data: { bestDepartureTime: Date.parse('2023-10-30T12:40:00Z') } };
+    const flightLegKey = { atcEdctTimeZulu: '2023-10-30T12:00:00Z' };
+    const result = getEdtcCellStyle(params, flightLegKey, 30);
+    expect(result).toEqual({ backgroundColor: Color.cyan });
+  });
+
+  it('should return red background if current time is more than 10 minutes after edctTime', () => {
+    mockMoment('2023-10-30T12:20:01Z');
+    const flightLegKey = { atcEdctTimeZulu: '2023-10-30T12:00:00Z' };
+    const result = getEdtcCellStyle({}, flightLegKey, 30);
+    expect(result).toEqual({ backgroundColor: Color.red });
+  });
+
+  it('should return orange background if within 10 minutes after edctTime', () => {
+    mockMoment('2023-10-30T12:05:00Z');
+    const flightLegKey = { atcEdctTimeZulu: '2023-10-30T12:00:00Z' };
+    const result = getEdtcCellStyle({}, flightLegKey, 30);
+    expect(result).toEqual({ backgroundColor: Color.orange });
+  });
+
+  it('should return yellow background if edctTime is within 25 minutes of current time', () => {
+    mockMoment('2023-10-30T11:40:00Z');
+    const flightLegKey = { atcEdctTimeZulu: '2023-10-30T12:00:00Z' };
+    const result = getEdtcCellStyle({}, flightLegKey, 30);
+    expect(result).toEqual({ backgroundColor: Color.yellow });
+  });
+
+  it('should return empty object if no conditions are met', () => {
+    mockMoment('2023-10-30T10:00:00Z');
+    const flightLegKey = { atcEdctTimeZulu: '2023-10-30T21:00:00Z' };
+    const result = getEdtcCellStyle({}, flightLegKey, 30);
+    expect(result).toEqual({});
+  });
+
+  function mockMoment(fakeNow: string) {
+    spyOn(moment, 'utc').and.callFake((date) => {
+      return moment(date ? date : fakeNow).utc();
+    });
+    spyOn(moment, 'parseZone').and.callFake((date) => {
+      return moment(date ? date : fakeNow).utc();
+    });
+    spyOn(moment, 'now').and.returnValue(moment(fakeNow).valueOf());
+  }
+});
